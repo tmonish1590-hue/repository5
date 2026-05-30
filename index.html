@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Arcade Snake Game</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #11141a;
+            color: #00ff66;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 90vh;
+            user-select: none;
+        }
+
+        h1 {
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 10px #00ff66;
+            font-size: 2.5rem;
+        }
+
+        /* Scoreboard Display Layout */
+        .scoreboard {
+            display: flex;
+            gap: 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-shadow: 0 0 5px #00ff66;
+        }
+
+        .lives-container {
+            color: #ff3333;
+            text-shadow: 0 0 5px #ff3333;
+        }
+
+        /* Smooth Canvas Setup */
+        #game-board {
+            background-color: #05080c;
+            border: 4px solid #00ff66;
+            box-shadow: 0 0 25px rgba(0, 255, 102, 0.3);
+            max-width: 100%;
+        }
+
+        /* Screen overlays for Game Over and Reset states */
+        .overlay-text {
+            margin-top: 15px;
+            font-size: 1.2rem;
+            min-height: 30px;
+        }
+
+        .game-over-msg {
+            color: #ff3333;
+            text-shadow: 0 0 10px #ff3333;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>SNAKE ARCADE</h1>
+    
+    <div class="scoreboard">
+        <div>SCORE: <span id="score">0</span></div>
+        <div class="lives-container">LIVES: <span id="lives">❤️❤️❤️</span></div>
+    </div>
+
+    <!-- The Game Viewport Screen Layer -->
+    <canvas id="game-board" width="400" height="400"></canvas>
+
+    <div id="message" class="overlay-text">Press any arrow key to begin moving!</div>
+
+    <script>
+        const canvas = document.getElementById("game-board");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+        const livesElement = document.getElementById("lives");
+        const messageElement = document.getElementById("message");
+
+        // Dynamic System Constraints Configuration
+        const gridSize = 20; 
+        const tileCount = canvas.width / gridSize;
+
+        let score = 0;
+        let lives = 3;
+        let gameLoopInterval;
+        let isGameOver = false;
+        let isFrozen = false; // Prevents instantly crashing again on life reset
+
+        // Snake tracking data parameters
+        let snake = [];
+        let velocityX = 0;
+        let velocityY = 0;
+        let foodX = 0;
+        let foodY = 0;
+
+        // Soundless screen flash response simulation variables
+        let flashFrameCount = 0;
+
+        function initGame() {
+            // Centers the snake structure initially
+            snake = [
+                { x: 10, y: 10 },
+                { x: 10, y: 11 },
+                { x: 10, y: 12 }
+            ];
+            // Resets speed till key inputs match direction mapping arrays
+            velocityX = 0;
+            velocityY = 0;
+            generateFood();
+            updateLivesDisplay();
+            isFrozen = false;
+        }
+
+        function generateFood() {
+            foodX = Math.floor(Math.random() * tileCount);
+            foodY = Math.floor(Math.random() * tileCount);
+            
+            // Re-roll if food positions itself inside the snake body tracking array
+            for (let part of snake) {
+                if (part.x === foodX && part.y === foodY) {
+                    generateFood();
+                    break;
+                }
+            }
+        }
+
+        function updateLivesDisplay() {
+            let heartString = "";
+            for (let i = 0; i < lives; i++) {
+                heartString += "❤️";
+            }
+            livesElement.textContent = heartString || "NONE";
+        }
+
+        // Processing Input Sequence Commands
+        window.addEventListener("keydown", changeDirection);
+
+        function changeDirection(event) {
+            if (isGameOver) {
+                if (event.code === "Space") resetFullGame();
+                return;
+            }
+
+            // Unfreeze movement targets upon initial keypresses
+            if (velocityX === 0 && velocityY === 0) {
+                messageElement.textContent = "Navigate using arrow keys!";
+            }
+
+            switch (event.key) {
+                case "ArrowUp":
+                    if (velocityY === 1) break; // Block moving directly back into body
+                    velocityX = 0; velocityY = -1;
+                    break;
+                case "ArrowDown":
+                    if (velocityY === -1) break;
+                    velocityX = 0; velocityY = 1;
+                    break;
+                case "ArrowLeft":
+                    if (velocityX === 1) break;
+                    velocityX = -1; velocityY = 0;
+                    break;
+                case "ArrowRight":
+                    if (velocityX === -1) break;
+                    velocityX = 1; velocityY = 0;
+                    break;
+            }
+        }
+
+        // Logic Rendering Loop Architecture 
+        function updateFrame() {
+            if (isGameOver || isFrozen) return;
+
+            // Shift position coordinates matching velocity vector properties
+            const head = { x: snake[0].x + velocityX, y: snake[0].y + velocityY };
+
+            // Only run boundary safety parameter calculations if moving
+            if (velocityX !== 0 || velocityY !== 0) {
+                
+                // Wall Collision Check Condition Checks
+                if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                    handleLifeLoss();
+                    return;
+                }
+
+                // Self Collision Check Conditions Loop
+                for (let part of snake) {
+                    if (head.x === part.x && head.y === part.y) {
+                        handleLifeLoss();
+                        return;
+                    }
+                }
+
+                // Append new coordinate matrix values into tracking arrays
+                snake.unshift(head);
+
+                // Food collision check calculation matrix loops
+                if (head.x === foodX && head.y === foodY) {
+                    score += 10;
+                    scoreElement.textContent = score;
+                    generateFood();
+                } else {
+                    snake.pop(); // Clear out the trailing data segment
+                }
+            }
+
+            clearScreen();
+            drawGridLines();
+            drawFood();
+            drawSnake();
+        }
+
+        function clearScreen() {
+            if (flashFrameCount > 0) {
+                ctx.fillStyle = "#400000"; // Red window alert flashing frame effect
+                flashFrameCount--;
+            } else {
+                ctx.fillStyle = "#05080c";
+            }
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function drawGridLines() {
+            ctx.strokeStyle = "rgba(0, 255, 102, 0.04)";
+            ctx.lineWidth = 1;
+            for (let i = 0; i < tileCount; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * gridSize, 0);
+                ctx.lineTo(i * gridSize, canvas.height);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(0, i * gridSize);
+                ctx.lineTo(canvas.width, i * gridSize);
+                ctx.stroke();
+            }
+        }
+
+        function drawSnake() {
+            snake.forEach((part, index) => {
+                // Alternates color mapping values to render clean scaling block variations
+                ctx.fillStyle = index === 0 ? "#00ff66" : "#00aa44";
+                ctx.shadowColor = "#00ff66";
+                ctx.shadowBlur = index === 0 ? 8 : 0;
+                
+                ctx.fillRect(part.x * gridSize + 1, part.y * gridSize + 1, gridSize - 2, gridSize - 2);
+                ctx.shadowBlur = 0; // Restore global variables configuration canvas profile layout settings
+            });
+        }
+
+        function drawFood() {
+            ctx.fillStyle = "#ff3333";
+            ctx.shadowColor = "#ff3333";
+            ctx.shadowBlur = 10;
+            ctx.fillRect(foodX * gridSize + 2, foodY * gridSize + 2, gridSize - 4, gridSize - 4);
+            ctx.shadowBlur = 0;
+        }
+
+        function handleLifeLoss() {
+            lives--;
+            flashFrameCount = 3; // Triggers immediate structural UI alert blink patterns
+            updateLivesDisplay();
+
+            if (lives > 0) {
+                isFrozen = true;
+                messageElement.textContent = "Ouch! Crashed. Press an Arrow Key to continue.";
+                // Resets core arrays without breaking running high score parameter blocks
+                snake = [
+                    { x: 10, y: 10 },
+                    { x: 10, y: 11 },
+                    { x: 10, y: 12 }
+                ];
+                velocityX = 0;
+                velocityY = 0;
+                isFrozen = false;
+            } else {
+                triggerGameOver();
+            }
+        }
+
+        function triggerGameOver() {
+            isGameOver = true;
+            messageElement.innerHTML = '<span class="game-over-msg">GAME OVER</span><br>Press SPACEBAR to retry.';
+            clearScreen();
+            drawFood();
+            drawSnake();
+        }
+
+        function resetFullGame() {
+            score = 0;
+            lives = 3;
+            isGameOver = false;
