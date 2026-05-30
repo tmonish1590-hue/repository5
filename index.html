@@ -19,46 +19,42 @@
             min-height: 90vh;
             user-select: none;
         }
-
+ 
         h1 {
             margin: 0 0 10px 0;
-            text-shadow: 0 0 10px #00ff66;
+            letter-spacing: 4px;
             font-size: 2.5rem;
         }
-
+ 
         .scoreboard {
             display: flex;
             gap: 40px;
             font-size: 1.5rem;
             font-weight: bold;
             margin-bottom: 15px;
-            text-shadow: 0 0 5px #00ff66;
         }
-
+ 
         .lives-container {
             color: #ff3333;
-            text-shadow: 0 0 5px #ff3333;
         }
-
+ 
         #game-board {
             background-color: #05080c;
             border: 4px solid #00ff66;
-            box-shadow: 0 0 25px rgba(0, 255, 102, 0.3);
             max-width: 100%;
         }
-
+ 
         .overlay-text {
             margin-top: 15px;
             font-size: 1.2rem;
             min-height: 30px;
         }
-
+ 
         .game-over-msg {
             color: #ff3333;
-            text-shadow: 0 0 10px #ff3333;
             animation: blink 1s infinite;
         }
-
+ 
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0; }
@@ -66,39 +62,39 @@
     </style>
 </head>
 <body>
-
+ 
     <h1>SNAKE ARCADE</h1>
-    
+ 
     <div class="scoreboard">
         <div>SCORE: <span id="score">0</span></div>
         <div class="lives-container">LIVES: <span id="lives">❤️❤️❤️</span></div>
     </div>
-
+ 
     <canvas id="game-board" width="400" height="400"></canvas>
-
+ 
     <div id="message" class="overlay-text">Press any arrow key to begin moving!</div>
-
+ 
     <script>
         const canvas = document.getElementById("game-board");
         const ctx = canvas.getContext("2d");
         const scoreElement = document.getElementById("score");
         const livesElement = document.getElementById("lives");
         const messageElement = document.getElementById("message");
-
-        const gridSize = 20; 
+ 
+        const gridSize = 20;
         const tileCount = canvas.width / gridSize;
-
+ 
         let score = 0;
         let lives = 3;
         let isGameOver = false;
-
+ 
         let snake = [];
         let velocityX = 0;
         let velocityY = 0;
         let foodX = 0;
         let foodY = 0;
         let flashFrameCount = 0;
-
+ 
         function initGame() {
             snake = [
                 { x: 10, y: 10 },
@@ -110,19 +106,14 @@
             generateFood();
             updateLivesDisplay();
         }
-
+ 
         function generateFood() {
-            foodX = Math.floor(Math.random() * tileCount);
-            foodY = Math.floor(Math.random() * tileCount);
-            
-            for (let part of snake) {
-                if (part.x === foodX && part.y === foodY) {
-                    generateFood();
-                    break;
-                }
-            }
+            do {
+                foodX = Math.floor(Math.random() * tileCount);
+                foodY = Math.floor(Math.random() * tileCount);
+            } while (snake.some(part => part.x === foodX && part.y === foodY));
         }
-
+ 
         function updateLivesDisplay() {
             let heartString = "";
             for (let i = 0; i < lives; i++) {
@@ -130,22 +121,22 @@
             }
             livesElement.textContent = heartString || "NONE";
         }
-
+ 
         window.addEventListener("keydown", changeDirection);
-
+ 
         function changeDirection(event) {
             if (isGameOver) {
                 if (event.code === "Space") resetFullGame();
                 return;
             }
-
+ 
             if (velocityX === 0 && velocityY === 0) {
                 messageElement.textContent = "Use Arrow Keys to survive!";
             }
-
+ 
             switch (event.key) {
                 case "ArrowUp":
-                    if (velocityY === 1) break; 
+                    if (velocityY === 1) break;
                     velocityX = 0; velocityY = -1;
                     break;
                 case "ArrowDown":
@@ -162,95 +153,87 @@
                     break;
             }
         }
-
+ 
         function updateFrame() {
             if (isGameOver) return;
-
-            // Extract core numeric head states explicitly
+ 
             const headX = snake[0].x + velocityX;
             const headY = snake[0].y + velocityY;
             const head = { x: headX, y: headY };
-
+ 
             if (velocityX !== 0 || velocityY !== 0) {
-                
+ 
                 if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
                     handleLifeLoss();
                     return;
                 }
-
+ 
                 for (let i = 1; i < snake.length; i++) {
                     if (head.x === snake[i].x && head.y === snake[i].y) {
                         handleLifeLoss();
                         return;
                     }
                 }
-
+ 
                 snake.unshift(head);
-
+ 
                 if (head.x === foodX && head.y === foodY) {
                     score += 10;
                     scoreElement.textContent = score;
                     generateFood();
                 } else {
-                    snake.pop(); 
+                    snake.pop();
                 }
             }
-
-            clearScreen();
-            drawGridLines();
-            drawFood();
-            drawSnake();
+ 
+            drawFrame();
         }
-
-        function clearScreen() {
+ 
+        function drawFrame() {
+            ctx.save();
+ 
+            // Background (flash red on life loss)
             if (flashFrameCount > 0) {
-                ctx.fillStyle = "#400000"; 
+                ctx.fillStyle = "#3a0000";
                 flashFrameCount--;
             } else {
                 ctx.fillStyle = "#05080c";
             }
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-
-        function drawGridLines() {
-            ctx.strokeStyle = "rgba(0, 255, 102, 0.04)";
-            ctx.lineWidth = 1;
-            for (let i = 0; i < tileCount; i++) {
+ 
+            // Grid lines
+            ctx.strokeStyle = "rgba(0, 255, 102, 0.05)";
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i <= tileCount; i++) {
                 ctx.beginPath();
                 ctx.moveTo(i * gridSize, 0);
                 ctx.lineTo(i * gridSize, canvas.height);
                 ctx.stroke();
-
+ 
                 ctx.beginPath();
                 ctx.moveTo(0, i * gridSize);
                 ctx.lineTo(canvas.width, i * gridSize);
                 ctx.stroke();
             }
-        }
-
-        function drawSnake() {
+ 
+            // Food
+            ctx.fillStyle = "#ff4444";
+            ctx.fillRect(foodX * gridSize + 3, foodY * gridSize + 3, gridSize - 6, gridSize - 6);
+ 
+            // Snake
             snake.forEach((part, index) => {
-                ctx.fillStyle = index === 0 ? "#00ff66" : "#00aa44";
-                ctx.shadowColor = "#00ff66";
-                ctx.shadowBlur = index === 0 ? 8 : 0;
+                ctx.fillStyle = index === 0 ? "#00ff66" : "#009944";
                 ctx.fillRect(part.x * gridSize + 1, part.y * gridSize + 1, gridSize - 2, gridSize - 2);
-                ctx.shadowBlur = 0; 
             });
+ 
+            ctx.restore();
         }
-
-        function drawFood() {
-            ctx.fillStyle = "#ff3333";
-            ctx.shadowColor = "#ff3333";
-            ctx.shadowBlur = 10;
-            ctx.fillRect(foodX * gridSize + 2, foodY * gridSize + 2, gridSize - 4, gridSize - 4);
-            ctx.shadowBlur = 0;
-        }
-
+ 
         function handleLifeLoss() {
             lives--;
-            flashFrameCount = 3; 
+            flashFrameCount = 4;
             updateLivesDisplay();
-
+ 
             if (lives > 0) {
                 messageElement.textContent = "Ouch! Lost a life. Press an Arrow Key to keep going.";
                 snake = [
@@ -264,15 +247,13 @@
                 triggerGameOver();
             }
         }
-
+ 
         function triggerGameOver() {
             isGameOver = true;
             messageElement.innerHTML = '<span class="game-over-msg">GAME OVER</span><br>Press SPACEBAR to restart from scratch.';
-            clearScreen();
-            drawFood();
-            drawSnake();
+            drawFrame();
         }
-
+ 
         function resetFullGame() {
             score = 0;
             lives = 3;
@@ -281,9 +262,10 @@
             messageElement.textContent = "Press any arrow key to begin moving!";
             initGame();
         }
-
+ 
         initGame();
-        setInterval(updateFrame, 100); 
+        drawFrame();
+        setInterval(updateFrame, 100);
     </script>
 </body>
 </html>
