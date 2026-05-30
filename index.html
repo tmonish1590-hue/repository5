@@ -100,7 +100,6 @@
         let flashFrameCount = 0;
 
         function initGame() {
-            // Start snake with 3 segments right in the middle
             snake = [
                 { x: 10, y: 10 },
                 { x: 10, y: 11 },
@@ -116,7 +115,6 @@
             foodX = Math.floor(Math.random() * tileCount);
             foodY = Math.floor(Math.random() * tileCount);
             
-            // Don't spawn food on top of the snake body
             for (let part of snake) {
                 if (part.x === foodX && part.y === foodY) {
                     generateFood();
@@ -168,20 +166,18 @@
         function updateFrame() {
             if (isGameOver) return;
 
-            // FIX: Read coordinates accurately from index 0 (the head)
+            // Extract core numeric head states explicitly
             const headX = snake[0].x + velocityX;
             const headY = snake[0].y + velocityY;
             const head = { x: headX, y: headY };
 
             if (velocityX !== 0 || velocityY !== 0) {
                 
-                // Wall Collision Check
                 if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
                     handleLifeLoss();
                     return;
                 }
 
-                // Self Collision Check (skip index 0 to avoid checking head against itself)
                 for (let i = 1; i < snake.length; i++) {
                     if (head.x === snake[i].x && head.y === snake[i].y) {
                         handleLifeLoss();
@@ -189,16 +185,14 @@
                     }
                 }
 
-                // Add new head segment
                 snake.unshift(head);
 
-                // Food eating check
                 if (head.x === foodX && head.y === foodY) {
                     score += 10;
                     scoreElement.textContent = score;
                     generateFood();
                 } else {
-                    snake.pop(); // Remove tail segment to move forward
+                    snake.pop(); 
                 }
             }
 
@@ -210,7 +204,7 @@
 
         function clearScreen() {
             if (flashFrameCount > 0) {
-                ctx.fillStyle = "#400000"; // Red flash when crashing
+                ctx.fillStyle = "#400000"; 
                 flashFrameCount--;
             } else {
                 ctx.fillStyle = "#05080c";
@@ -289,7 +283,7 @@
         }
 
         initGame();
-        setInterval(updateFrame, 100); // 10 frames per second
+        setInterval(updateFrame, 100); 
     </script>
 </body>
 </html>
